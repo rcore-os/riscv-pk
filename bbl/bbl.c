@@ -59,9 +59,9 @@ void boot_other_hart(uintptr_t unused __attribute__((unused)))
   }
 
 #ifdef BBL_BOOT_MACHINE
-  enter_machine_mode(entry, hartid, dtb_output());
+  enter_machine_mode(entry, hartid, dtb_output(), ~disabled_hart_mask & hart_mask);
 #else /* Run bbl in supervisor mode */
-  enter_supervisor_mode(entry, hartid, dtb_output());
+  enter_supervisor_mode(entry, hartid, dtb_output(), ~disabled_hart_mask & hart_mask);
 #endif
 }
 

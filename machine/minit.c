@@ -202,7 +202,7 @@ static inline void setup_pmp(void)
                 : : "r" (pmpc), "r" (pmpa) : "t0");
 }
 
-void enter_supervisor_mode(void (*fn)(uintptr_t), uintptr_t arg0, uintptr_t arg1)
+void enter_supervisor_mode(void (*fn)(uintptr_t), uintptr_t arg0, uintptr_t arg1, uintptr_t arg2)
 {
   setup_pmp();
 
@@ -219,11 +219,12 @@ void enter_supervisor_mode(void (*fn)(uintptr_t), uintptr_t arg0, uintptr_t arg1
 
   register uintptr_t a0 asm ("a0") = arg0;
   register uintptr_t a1 asm ("a1") = arg1;
-  asm volatile ("mret" : : "r" (a0), "r" (a1));
+  register uintptr_t a2 asm ("a2") = arg2;
+  asm volatile ("mret" : : "r" (a0), "r" (a1), "r" (a2));
   __builtin_unreachable();
 }
 
-void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t), uintptr_t arg0, uintptr_t arg1)
+void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t, uintptr_t), uintptr_t arg0, uintptr_t arg1, uintptr_t arg2)
 {
   setup_pmp();
 
@@ -233,7 +234,7 @@ void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t), uintptr_t arg0, uintpt
   write_csr(mscratch, MACHINE_STACK_TOP() - MENTRY_FRAME_SIZE);
 
   /* Jump to the payload's entry point */
-  fn(arg0, arg1);
+  fn(arg0, arg1, arg2);
 
   __builtin_unreachable();
 }
