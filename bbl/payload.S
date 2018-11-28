@@ -10,7 +10,7 @@
   .align 3
 #else
   /* align payload to megapage */
-  .align RISCV_PGSHIFT + RISCV_PGLEVEL_BITS
+  .align 17
 #endif
 
   .globl _payload_start, _payload_end
