@@ -301,5 +301,6 @@ do_reset:
 
   .bss
   .align RISCV_PGSHIFT
+  .globl stacks
 stacks:
   .skip RISCV_PGSIZE * MAX_HARTS

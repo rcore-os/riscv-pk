@@ -4,6 +4,7 @@
 #define _RISCV_MTRAP_H
 
 #include "encoding.h"
+#include "bits.h"
 
 #ifdef __riscv_atomic
 # define MAX_HARTS 8 // arbitrary
@@ -35,6 +36,7 @@ extern uintptr_t mem_size;
 extern volatile uint64_t* mtime;
 extern volatile uint32_t* plic_priorities;
 extern size_t plic_ndevs;
+extern void* stacks;
 
 typedef struct {
   volatile uint32_t* ipi;
@@ -48,9 +50,8 @@ typedef struct {
   volatile uintptr_t* plic_s_ie;
 } hls_t;
 
-#define MACHINE_STACK_TOP() ({ \
-  register uintptr_t sp asm ("sp"); \
-  (void*)((sp + RISCV_PGSIZE) & -RISCV_PGSIZE); })
+#define MACHINE_STACK_TOP() ( \
+  (void*)((uintptr_t)&stacks + RISCV_PGSIZE * (read_const_csr(mhartid) + 1)))
 
 // hart-local storage, at top of stack
 #define HLS() ((hls_t*)(MACHINE_STACK_TOP() - HLS_SIZE))
