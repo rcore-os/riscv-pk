@@ -78,7 +78,29 @@ static uintptr_t mcall_console_getchar()
 
 static uintptr_t mcall_clear_ipi()
 {
+#ifdef BBL_BOOT_MACHINE
+  // called when M-mode kernel receive a machine software interrupt
+  // the following is same as: mentry.S 'Is it an IPI?'
+
+  // First, clear the MIPI bit.
+  *HLS()->ipi = 0;
+  mb();
+  // Now, decode the cause(s).
+  uintptr_t event = atomic_swap(&HLS()->mipi_pending, 0);
+  switch(event) {
+    case IPI_FENCE_I:
+      asm volatile("fence.i\n"); break;
+    case IPI_SFENCE_VMA:
+      asm volatile("sfence.vma\n"); break;
+    case IPI_HALT:
+      while(1) wfi();
+    default:
+      break;
+  }
+  return 0;
+#else
   return clear_csr(mip, MIP_SSIP) & MIP_SSIP;
+#endif /* BBL_BOOT_MACHINE */
 }
 
 static uintptr_t mcall_shutdown()
@@ -89,8 +111,12 @@ static uintptr_t mcall_shutdown()
 static uintptr_t mcall_set_timer(uint64_t when)
 {
   *HLS()->timecmp = when;
+#ifdef BBL_BOOT_MACHINE
+  clear_csr(mip, MIP_MTIP);
+#else
   clear_csr(mip, MIP_STIP);
   set_csr(mie, MIP_MTIP);
+#endif /* BBL_BOOT_MACHINE */
   return 0;
 }
 
