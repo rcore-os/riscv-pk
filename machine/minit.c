@@ -131,6 +131,14 @@ static void hart_plic_init()
 
   size_t ie_words = (plic_ndevs + 8 * sizeof(uintptr_t) - 1) /
 		(8 * sizeof(uintptr_t));
+#ifdef BBL_BOOT_MACHINE
+  for (size_t i = 0; i < ie_words; i++) {
+     if (HLS()->plic_m_ie) {
+        HLS()->plic_m_ie[i] = ULONG_MAX;
+     }
+  }
+  *HLS()->plic_m_thresh = 0;
+#else
   for (size_t i = 0; i < ie_words; i++) {
      if (HLS()->plic_s_ie) {
         // Supervisor not always present
@@ -142,6 +150,7 @@ static void hart_plic_init()
       // Supervisor not always present
       *HLS()->plic_s_thresh = 0;
   }
+#endif /* BBL_BOOT_MACHINE */
 }
 
 static void wake_harts()
