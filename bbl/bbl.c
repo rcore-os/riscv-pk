@@ -59,7 +59,15 @@ void boot_other_hart(uintptr_t unused __attribute__((unused)))
   }
 
 #ifdef BBL_BOOT_MACHINE
-  enter_machine_mode(entry, hartid, dtb_output(), ~disabled_hart_mask & hart_mask);
+  asm (".pushsection .rodata\n"
+       "bbl_functions:\n"
+       "  .word mcall_trap\n"
+       "  .word illegal_insn_trap\n"
+       "  .word mcall_console_putchar\n"
+       "  .word mcall_console_getchar\n"
+       ".popsection\n");
+  extern void* bbl_functions;
+  enter_machine_mode(entry, hartid, dtb_output(), ~disabled_hart_mask & hart_mask, (uintptr_t)&bbl_functions);
 #else /* Run bbl in supervisor mode */
   enter_supervisor_mode(entry, hartid, dtb_output(), ~disabled_hart_mask & hart_mask);
 #endif

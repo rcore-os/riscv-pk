@@ -224,7 +224,7 @@ void enter_supervisor_mode(void (*fn)(uintptr_t), uintptr_t arg0, uintptr_t arg1
   __builtin_unreachable();
 }
 
-void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t, uintptr_t), uintptr_t arg0, uintptr_t arg1, uintptr_t arg2)
+void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t, uintptr_t, uintptr_t), uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
 {
   setup_pmp();
 
@@ -234,7 +234,7 @@ void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t, uintptr_t), uintptr_t a
   write_csr(mscratch, MACHINE_STACK_TOP() - MENTRY_FRAME_SIZE);
 
   /* Jump to the payload's entry point */
-  fn(arg0, arg1, arg2);
+  fn(arg0, arg1, arg2, arg3);
 
   __builtin_unreachable();
 }

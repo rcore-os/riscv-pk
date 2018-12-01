@@ -21,7 +21,7 @@ void __attribute__((noreturn)) bad_trap(uintptr_t* regs, uintptr_t dummy, uintpt
   die("machine mode: unhandlable trap %d @ %p", read_csr(mcause), mepc);
 }
 
-static uintptr_t mcall_console_putchar(uint8_t ch)
+uintptr_t mcall_console_putchar(uint8_t ch)
 {
   if (uart) {
     uart_putchar(ch);
@@ -63,7 +63,7 @@ static void send_ipi(uintptr_t recipient, int event)
   *OTHER_HLS(recipient)->ipi = 1;
 }
 
-static uintptr_t mcall_console_getchar()
+uintptr_t mcall_console_getchar()
 {
   if (uart) {
     return uart_getchar();

@@ -68,7 +68,7 @@ void putstring(const char* s);
 
 void enter_supervisor_mode(void (*fn)(uintptr_t), uintptr_t arg0, uintptr_t arg1, uintptr_t arg2)
   __attribute__((noreturn));
-void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t, uintptr_t), uintptr_t arg0, uintptr_t arg1, uintptr_t arg2)
+void enter_machine_mode(void (*fn)(uintptr_t, uintptr_t, uintptr_t, uintptr_t), uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3)
   __attribute__((noreturn));
 void boot_loader(uintptr_t dtb);
 void boot_other_hart(uintptr_t dtb);
