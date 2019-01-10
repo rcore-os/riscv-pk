@@ -2,7 +2,6 @@
 
 bbl_subproject_deps = \
 	util \
-  softfloat \
   machine \
   dummy_payload \
 
