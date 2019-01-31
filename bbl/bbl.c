@@ -43,27 +43,27 @@ static void filter_dtb(uintptr_t source)
 // static alloc root page table
 static pte_t root_table[1 << RISCV_PGLEVEL_BITS] __attribute__((aligned(RISCV_PGSIZE)));
 
-// only used for Sv48 systems, to map 0xFFFF_FFFF_8000_0000 to 0x8000_0000.
+// only used for Sv48 systems, to map 0xFFFF_FFFF_C000_0000 to 0x8000_0000.
 static pte_t p3_table[1 << RISCV_PGLEVEL_BITS] __attribute__((aligned(RISCV_PGSIZE)));
 
 static void setup_page_table_sv32()
 {
-  // map kernel [0x200..] 0x80000000..
+  // map kernel [0x300..] 0x80000000 -> 0xC0000000..
   int i_end = dtb_output() / MEGAPAGE_SIZE;
   for(int i=0x200; i<i_end; ++i) {
-    root_table[i] = pte_create(i << RISCV_PGLEVEL_BITS, PTE_R | PTE_W | PTE_X);
+    root_table[i + 0x100] = pte_create(i << RISCV_PGLEVEL_BITS, PTE_R | PTE_W | PTE_X);
   }
-  // map recursive [0x3fe] (V), [0x3ff] (VRW)
+  // map recursive [0x3fd] (V), [0x3fe] (VRW), [0x3ff] (VRW)
   uintptr_t root_table_ppn = (uintptr_t)root_table >> RISCV_PGSHIFT;
-  root_table[0x3fe] = pte_create(root_table_ppn, 0);
-  root_table[0x3ff] = pte_create(root_table_ppn, PTE_R | PTE_W);
+  root_table[0x3fd] = pte_create(root_table_ppn, 0);
+  root_table[0x3fe] = pte_create(root_table_ppn, PTE_R | PTE_W);
 }
 
 static void setup_page_table_sv39()
 {
-  // map kernel [0o776] 0x80000000 -> 0xffffffff_80000000 (size = 1G)
-  root_table[0776] = pte_create(0x80000, PTE_R | PTE_W | PTE_X);
-  // map recursive [0o774] (V), [0o775] (VRW)
+  // map kernel [0o777] 0x80000000 -> 0xFFFFFFFF_C0000000 (size = 1G)
+  root_table[0777] = pte_create(0x80000, PTE_R | PTE_W | PTE_X);
+  // map recursive [0o774] (V), [0o775] (VRW), [0o776] (VRW)
   uintptr_t root_table_ppn = (uintptr_t)root_table >> RISCV_PGSHIFT;
   root_table[0774] = pte_create(root_table_ppn, 0);
   root_table[0775] = pte_create(root_table_ppn, PTE_R | PTE_W);
@@ -71,14 +71,14 @@ static void setup_page_table_sv39()
 
 static void setup_page_table_sv48()
 {
-	// map kernel va FFFF_FFFF_8000_0000 -> pa 0000_0000_8000_0000
+  // map kernel [0o777] 0x80000000 -> 0xFFFFFFFF_C0000000 (size = 1G)
 	uintptr_t p3_table_ppn = (uintptr_t) p3_table >> RISCV_PGSHIFT;
   root_table[0777] = pte_create(p3_table_ppn, 0);
-	p3_table[0776] = pte_create(0x80000, PTE_R | PTE_W | PTE_X);
-
+	p3_table[0777] = pte_create(0x80000, PTE_R | PTE_W | PTE_X);
+  // map recursive [0o774] (V), [0o775] (VRW), [0o776] (VRW)
   uintptr_t root_table_ppn = (uintptr_t) root_table >> RISCV_PGSHIFT;
-  root_table[0775] = pte_create(root_table_ppn, 0);
-  root_table[0776] = pte_create(root_table_ppn, PTE_R | PTE_W);
+  root_table[0774] = pte_create(root_table_ppn, 0);
+  root_table[0775] = pte_create(root_table_ppn, PTE_R | PTE_W);
 }
 
 static void enable_paging() {
@@ -117,7 +117,12 @@ void boot_other_hart(uintptr_t unused __attribute__((unused)))
   enter_machine_mode(entry, hartid, dtb_output(), ~disabled_hart_mask & hart_mask, (uintptr_t)&bbl_functions);
 #else /* Run bbl in supervisor mode */
   enable_paging();
-  enter_supervisor_mode(entry, hartid, dtb_output(), ~disabled_hart_mask & hart_mask);
+#if __riscv_xlen == 64
+    uintptr_t dtb = dtb_output() + 0xffffffff40000000;
+#else
+    uintptr_t dtb = dtb_output() + 0x40000000;
+#endif
+  enter_supervisor_mode(entry, hartid, dtb, ~disabled_hart_mask & hart_mask);
 #endif
 }
 
@@ -138,9 +143,10 @@ void boot_loader(uintptr_t dtb)
   setup_page_table_sv48();
 // XXX: hack
 //  setup_page_table_sv39();
-  entry_point += 0xffffffff00000000;
+  entry_point += 0xffffffff40000000;
 #else
   setup_page_table_sv32();
+  entry_point += 0x40000000;
 #endif
 #endif
   boot_other_hart(0);
