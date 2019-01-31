@@ -140,9 +140,11 @@ void boot_loader(uintptr_t dtb)
   entry_point = kernel_start ? kernel_start : &_payload_start;
 #ifndef BBL_BOOT_MACHINE
 #if __riscv_xlen == 64
+#ifdef BBL_SV39
+  setup_page_table_sv39();
+#else
   setup_page_table_sv48();
-// XXX: hack
-//  setup_page_table_sv39();
+#endif
   entry_point += 0xffffffff40000000;
 #else
   setup_page_table_sv32();

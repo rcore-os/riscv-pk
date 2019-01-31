@@ -23,3 +23,8 @@ AC_ARG_ENABLE([boot-machine], AS_HELP_STRING([--enable-boot-machine], [Run paylo
 AS_IF([test "x$enable_boot_machine" == "xyes"], [
   AC_DEFINE([BBL_BOOT_MACHINE],,[Define to run payload in machine mode])
 ])
+
+AC_ARG_ENABLE([sv39], AS_HELP_STRING([--enable-sv39], [Use Sv39]))
+AS_IF([test "x$enable_sv39" == "xyes"], [
+  AC_DEFINE([BBL_SV39],,[Define to use sv39])
+])

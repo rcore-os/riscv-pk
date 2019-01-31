@@ -6,6 +6,9 @@
 /* Define if subproject MCPPBS_SPROJ_NORM is enabled */
 #undef BBL_ENABLED
 
+/* Define to use sv39 */
+#undef BBL_SV39
+
 /* Define if subproject MCPPBS_SPROJ_NORM is enabled */
 #undef DUMMY_PAYLOAD_ENABLED
 
