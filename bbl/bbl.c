@@ -11,6 +11,7 @@
 
 extern char _payload_start, _payload_end; /* internal payload */
 static const void* entry_point;
+static volatile char other_harts_start;
 long disabled_hart_mask;
 
 static uintptr_t dtb_output()
@@ -51,22 +52,22 @@ static void setup_page_table_sv32()
   // map kernel [0x300..] 0x80000000 -> 0xC0000000..
   int i_end = dtb_output() / MEGAPAGE_SIZE;
   for(int i=0x200; i<i_end; ++i) {
-    root_table[i + 0x100] = pte_create(i << RISCV_PGLEVEL_BITS, PTE_R | PTE_W | PTE_X);
+    root_table[i + 0x100] = pte_create(i << RISCV_PGLEVEL_BITS, PTE_R | PTE_W | PTE_X | PTE_A | PTE_D);
   }
   // map recursive [0x3fd] (V), [0x3fe] (VRW), [0x3ff] (VRW)
   uintptr_t root_table_ppn = (uintptr_t)root_table >> RISCV_PGSHIFT;
-  root_table[0x3fd] = pte_create(root_table_ppn, 0);
-  root_table[0x3fe] = pte_create(root_table_ppn, PTE_R | PTE_W);
+  root_table[0x3fd] = pte_create(root_table_ppn, PTE_A | PTE_D);
+  root_table[0x3fe] = pte_create(root_table_ppn, PTE_R | PTE_W | PTE_A | PTE_D);
 }
 
 static void setup_page_table_sv39()
 {
   // map kernel [0o777] 0x80000000 -> 0xFFFFFFFF_C0000000 (size = 1G)
-  root_table[0777] = pte_create(0x80000, PTE_R | PTE_W | PTE_X);
+  root_table[0777] = pte_create(0x80000, PTE_R | PTE_W | PTE_X | PTE_A | PTE_D);
   // map recursive [0o774] (V), [0o775] (VRW), [0o776] (VRW)
   uintptr_t root_table_ppn = (uintptr_t)root_table >> RISCV_PGSHIFT;
-  root_table[0774] = pte_create(root_table_ppn, 0);
-  root_table[0775] = pte_create(root_table_ppn, PTE_R | PTE_W);
+  root_table[0774] = pte_create(root_table_ppn, PTE_A | PTE_D);
+  root_table[0775] = pte_create(root_table_ppn, PTE_R | PTE_W | PTE_A | PTE_D);
 }
 
 static void setup_page_table_sv48()
@@ -74,11 +75,11 @@ static void setup_page_table_sv48()
   // map kernel [0o777] 0x80000000 -> 0xFFFFFFFF_C0000000 (size = 1G)
 	uintptr_t p3_table_ppn = (uintptr_t) p3_table >> RISCV_PGSHIFT;
   root_table[0777] = pte_create(p3_table_ppn, 0);
-	p3_table[0777] = pte_create(0x80000, PTE_R | PTE_W | PTE_X);
+	p3_table[0777] = pte_create(0x80000, PTE_R | PTE_W | PTE_X | PTE_A | PTE_D);
   // map recursive [0o774] (V), [0o775] (VRW), [0o776] (VRW)
   uintptr_t root_table_ppn = (uintptr_t) root_table >> RISCV_PGSHIFT;
-  root_table[0774] = pte_create(root_table_ppn, 0);
-  root_table[0775] = pte_create(root_table_ppn, PTE_R | PTE_W);
+  root_table[0774] = pte_create(root_table_ppn, PTE_A | PTE_D);
+  root_table[0775] = pte_create(root_table_ppn, PTE_R | PTE_W | PTE_A | PTE_D);
 }
 
 static void enable_paging() {
@@ -89,11 +90,10 @@ static void enable_paging() {
 
 void boot_other_hart(uintptr_t unused __attribute__((unused)))
 {
-  const void* entry;
-  do {
-    entry = entry_point;
+  // wait for other harts start signal
+  while(!other_harts_start) {
     mb();
-  } while (!entry);
+  }
 
   long hartid = read_csr(mhartid);
   if ((1 << hartid) & disabled_hart_mask) {
@@ -114,7 +114,7 @@ void boot_other_hart(uintptr_t unused __attribute__((unused)))
        "  .word mcall_console_getchar\n"
        ".popsection\n");
   extern void* bbl_functions;
-  enter_machine_mode(entry, hartid, dtb_output(), ~disabled_hart_mask & hart_mask, (uintptr_t)&bbl_functions);
+  enter_machine_mode(entry_point, hartid, dtb_output(), ~disabled_hart_mask & hart_mask, (uintptr_t)&bbl_functions);
 #else /* Run bbl in supervisor mode */
   enable_paging();
 #if __riscv_xlen == 64
@@ -122,7 +122,7 @@ void boot_other_hart(uintptr_t unused __attribute__((unused)))
 #else
     uintptr_t dtb = dtb_output() + 0x40000000;
 #endif
-  enter_supervisor_mode(entry, hartid, dtb, ~disabled_hart_mask & hart_mask);
+  enter_supervisor_mode(entry_point, hartid, dtb, ~disabled_hart_mask & hart_mask);
 #endif
 }
 
@@ -151,5 +151,9 @@ void boot_loader(uintptr_t dtb)
   entry_point += 0x40000000;
 #endif
 #endif
+  // allow other harts start
+  mb();
+  other_harts_start = 1;
+
   boot_other_hart(0);
 }
