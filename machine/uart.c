@@ -61,6 +61,8 @@ static void uart_done(const struct fdt_scan_node *node, void *extra)
   uart = (void*)(uintptr_t)scan->reg;
   uart[UART_REG_TXCTRL] = UART_TXEN;
   uart[UART_REG_RXCTRL] = UART_RXEN;
+  // Enable Rx interrupt
+  uart[UART_REG_IE] = UART_RXWM;
 }
 
 void query_uart(uintptr_t fdt)
